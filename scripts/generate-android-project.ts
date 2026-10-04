@@ -18,9 +18,7 @@ if (!fs.existsSync(outDir)) {
 
 const manifest = TEMPLATES[0].manifest;
 const render = renderStaticSite(manifest);
-const cleanPackageName = ((manifest.meta as any).packageName || 'ir.tavana.forge.app')
-  .toLowerCase()
-  .replace(/[^a-z0-9_.]/g, '') || 'ir.tavana.forge.app';
+const cleanPackageName = 'ir.tavana.forge';
 const appVersionName = (manifest.meta as any).versionName || '1.0.0';
 const appVersionCode = (manifest.meta as any).versionCode || 1;
 
@@ -195,10 +193,26 @@ fs.writeFileSync(path.join(appDir, 'proguard-rules.pro'), `
 -dontwarn com.google.android.material.**
 `.trim());
 
-// 7. AndroidManifest.xml
+// 7. Source directory & Android Resources
 const mainDir = path.join(appDir, 'src', 'main');
 fs.mkdirSync(mainDir, { recursive: true });
 
+const resDir = path.join(mainDir, 'res', 'values');
+fs.mkdirSync(resDir, { recursive: true });
+
+fs.writeFileSync(path.join(resDir, 'strings.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tavana Forge</string>
+</resources>`.trim());
+
+fs.writeFileSync(path.join(resDir, 'themes.xml'), `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.App" parent="android:Theme.NoTitleBar">
+        <item name="android:windowBackground">#0F172A</item>
+    </style>
+</resources>`.trim());
+
+// 8. AndroidManifest.xml
 fs.writeFileSync(path.join(mainDir, 'AndroidManifest.xml'), `<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
@@ -207,16 +221,18 @@ fs.writeFileSync(path.join(mainDir, 'AndroidManifest.xml'), `<?xml version="1.0"
     <application
         android:allowBackup="true"
         android:icon="@android:drawable/sym_def_app_icon"
-        android:label="Tavana Forge App"
+        android:label="@string/app_name"
         android:roundIcon="@android:drawable/sym_def_app_icon"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+        android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/Theme.App">
 
         <activity
-            android:name="ir.tavana.forge.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
-            android:configChanges="orientation|screenSize|keyboardHidden"
-            android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:theme="@style/Theme.App">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -225,22 +241,24 @@ fs.writeFileSync(path.join(mainDir, 'AndroidManifest.xml'), `<?xml version="1.0"
     </application>
 </manifest>`.trim());
 
-// 8. MainActivity.kt
+// 9. MainActivity.kt (Robust native Activity that never crashes on launch)
 const javaDir = path.join(mainDir, 'java', 'ir', 'tavana', 'forge');
 fs.mkdirSync(javaDir, { recursive: true });
 
 fs.writeFileSync(path.join(javaDir, 'MainActivity.kt'), `package ir.tavana.forge
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.graphics.Color
 import android.os.Bundle
+import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
     private lateinit var webView: WebView
 
@@ -248,18 +266,34 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        webView = WebView(this)
+        try {
+            window.statusBarColor = Color.parseColor("#0F172A")
+            window.navigationBarColor = Color.parseColor("#0F172A")
+        } catch (_: Exception) {}
+
+        webView = WebView(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.parseColor("#0F172A"))
+        }
         setContentView(webView)
 
-        val settings = webView.settings
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.allowFileAccess = true
-        settings.allowContentAccess = true
-        settings.loadWithOverviewMode = true
-        settings.useWideViewPort = true
-        settings.builtInZoomControls = false
-        settings.displayZoomControls = false
+        with(webView.settings) {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            databaseEnabled = true
+            allowFileAccess = true
+            allowContentAccess = true
+            allowFileAccessFromFileURLs = true
+            allowUniversalAccessFromFileURLs = true
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            cacheMode = WebSettings.LOAD_DEFAULT
+            builtInZoomControls = false
+            displayZoomControls = false
+        }
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -269,22 +303,20 @@ class MainActivity : AppCompatActivity() {
 
         webView.webChromeClient = WebChromeClient()
         webView.loadUrl("file:///android_asset/index.html")
+    }
 
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    webView.goBack()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                }
-            }
-        })
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (this::webView.isInitialized && webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
     }
 }
 `.trim());
 
-// 9. Assets
+// 10. Assets
 const assetsDir = path.join(mainDir, 'assets');
 fs.mkdirSync(assetsDir, { recursive: true });
 

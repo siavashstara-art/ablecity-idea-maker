@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "ir.tavana.forge.app"
+    namespace = "ir.tavana.forge"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "ir.tavana.forge.app"
+        applicationId = "ir.tavana.forge"
         minSdk = 24
         targetSdk = 35
         versionCode = 1

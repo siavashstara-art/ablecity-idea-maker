@@ -1,15 +1,17 @@
 package ir.tavana.forge
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.graphics.Color
 import android.os.Bundle
+import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.OnBackPressedCallback
-import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : Activity() {
 
     private lateinit var webView: WebView
 
@@ -17,18 +19,34 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        webView = WebView(this)
+        try {
+            window.statusBarColor = Color.parseColor("#0F172A")
+            window.navigationBarColor = Color.parseColor("#0F172A")
+        } catch (_: Exception) {}
+
+        webView = WebView(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.parseColor("#0F172A"))
+        }
         setContentView(webView)
 
-        val settings = webView.settings
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.allowFileAccess = true
-        settings.allowContentAccess = true
-        settings.loadWithOverviewMode = true
-        settings.useWideViewPort = true
-        settings.builtInZoomControls = false
-        settings.displayZoomControls = false
+        with(webView.settings) {
+            javaScriptEnabled = true
+            domStorageEnabled = true
+            databaseEnabled = true
+            allowFileAccess = true
+            allowContentAccess = true
+            allowFileAccessFromFileURLs = true
+            allowUniversalAccessFromFileURLs = true
+            useWideViewPort = true
+            loadWithOverviewMode = true
+            cacheMode = WebSettings.LOAD_DEFAULT
+            builtInZoomControls = false
+            displayZoomControls = false
+        }
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -38,16 +56,14 @@ class MainActivity : AppCompatActivity() {
 
         webView.webChromeClient = WebChromeClient()
         webView.loadUrl("file:///android_asset/index.html")
+    }
 
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    webView.goBack()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                }
-            }
-        })
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (this::webView.isInitialized && webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
     }
 }
