@@ -6,15 +6,6 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Build Type'
-        required: true
-        default: 'release'
-        type: choice
-        options:
-          - release
-          - debug
 
 jobs:
   build:
@@ -33,7 +24,6 @@ jobs:
             echo "working_dir=." >> $GITHUB_OUTPUT
           else
             echo "React Web repository detected. Generating Android project from manifest..."
-            # Setup node to run the project generator
             npm install --legacy-peer-deps
             npm run generate:android
             echo "working_dir=android-build" >> $GITHUB_OUTPUT
@@ -44,16 +34,15 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          # Note: Caching handled by setup-gradle to prevent cache-hash failures on missing gradle files
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-          build-root-directory: ${{ steps.prep.outputs.working_dir }}
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Grant Execute Permission to Gradle Wrapper
         working-directory: ${{ steps.prep.outputs.working_dir }}
@@ -70,8 +59,6 @@ jobs:
         working-directory: ${{ steps.prep.outputs.working_dir }}
         run: |
           KEYSTORE_FILE="release-key.jks"
-          
-          # If Base64 Keystore secret exists, decode it safely
           if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
             echo "Decoding Keystore from GitHub Secrets..."
             echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > "$KEYSTORE_FILE"
@@ -80,8 +67,7 @@ jobs:
             echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
             echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
           else
-            # CI Automated Generation if secrets are not set yet
-            echo "Secrets not found. Generating automated CI Keystore..."
+            echo "Generating automated CI Keystore..."
             PASS="CI_AutoSecret_${RANDOM}_${RANDOM}"
             keytool -genkey -v -keystore "$KEYSTORE_FILE" \
               -alias "tavana_ci_key" \
@@ -91,7 +77,6 @@ jobs:
               -storepass "$PASS" \
               -keypass "$PASS" \
               -dname "CN=TavanaForge, OU=CI, O=Tavana, L=Tehran, ST=Tehran, C=IR"
-            
             echo "KEYSTORE_FILE=$KEYSTORE_FILE" >> $GITHUB_ENV
             echo "KEYSTORE_PASSWORD=$PASS" >> $GITHUB_ENV
             echo "KEY_ALIAS=tavana_ci_key" >> $GITHUB_ENV
