@@ -11,6 +11,7 @@ import { AiForgeModal } from './AiForgeModal';
 import { TemplatesModal } from './TemplatesModal';
 import { AddBlockModal } from './AddBlockModal';
 import { ExportZipModal } from './ExportZipModal';
+import { MetadataCacheEditor } from './MetadataCacheEditor';
 import {
   Layers,
   Palette,
@@ -34,6 +35,7 @@ import {
   Check,
   ArrowRight,
   Film,
+  Cloud,
 } from 'lucide-react';
 import { PromoVideoStudioModal } from './PromoVideoStudioModal';
 
@@ -50,7 +52,7 @@ export const ForgeWorkspace: React.FC<ForgeWorkspaceProps> = ({
   const [selectedBlockId, setSelectedBlockId] = useState<string>(
     initialManifest.blocks[0]?.id || ''
   );
-  const [activeSideTab, setActiveSideTab] = useState<'blocks' | 'theme' | 'json'>('blocks');
+  const [activeSideTab, setActiveSideTab] = useState<'blocks' | 'theme' | 'metadata' | 'json'>('blocks');
   const [mobileViewTab, setMobileViewTab] = useState<'editor' | 'preview'>('editor');
   const [viewportMode, setViewportMode] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
 
@@ -315,6 +317,17 @@ export const ForgeWorkspace: React.FC<ForgeWorkspaceProps> = ({
               <span>طراحی و تم</span>
             </button>
             <button
+              onClick={() => setActiveSideTab('metadata')}
+              className={`px-3 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1.5 ${
+                activeSideTab === 'metadata'
+                  ? 'bg-[#0b101c] text-amber-300 border-t border-x border-white/10'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Cloud className="w-3.5 h-3.5 text-sky-400" />
+              <span>متادیتا و کش ابری</span>
+            </button>
+            <button
               onClick={() => setActiveSideTab('json')}
               className={`px-3 py-2 text-xs font-bold rounded-t-lg transition-all flex items-center gap-1.5 ${
                 activeSideTab === 'json'
@@ -477,6 +490,13 @@ export const ForgeWorkspace: React.FC<ForgeWorkspaceProps> = ({
                   {JSON.stringify(manifest, null, 2)}
                 </pre>
               </div>
+            )}
+
+            {activeSideTab === 'metadata' && (
+              <MetadataCacheEditor
+                manifest={manifest}
+                onUpdateManifest={handleUpdateManifest}
+              />
             )}
           </div>
 

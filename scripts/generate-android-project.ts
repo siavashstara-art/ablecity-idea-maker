@@ -18,7 +18,11 @@ if (!fs.existsSync(outDir)) {
 
 const manifest = TEMPLATES[0].manifest;
 const render = renderStaticSite(manifest);
-const cleanPackageName = 'ir.tavana.forge.app';
+const cleanPackageName = ((manifest.meta as any).packageName || 'ir.tavana.forge.app')
+  .toLowerCase()
+  .replace(/[^a-z0-9_.]/g, '') || 'ir.tavana.forge.app';
+const appVersionName = (manifest.meta as any).versionName || '1.0.0';
+const appVersionCode = (manifest.meta as any).versionCode || 1;
 
 // 1. settings.gradle.kts
 fs.writeFileSync(path.join(outDir, 'settings.gradle.kts'), `
@@ -30,7 +34,7 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
@@ -63,7 +67,7 @@ fs.mkdirSync(wrapperDir, { recursive: true });
 fs.writeFileSync(path.join(wrapperDir, 'gradle-wrapper.properties'), `
 distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists
-distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-bin.zip
+distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip
 networkTimeout=10000
 validateDistributionUrl=true
 zipStoreBase=GRADLE_USER_HOME
@@ -103,8 +107,8 @@ android {
         applicationId = "${cleanPackageName}"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = ${appVersionCode}
+        versionName = "${appVersionName}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

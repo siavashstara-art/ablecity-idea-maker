@@ -13,6 +13,10 @@ export interface SiteMeta {
   rtl: boolean;
   favicon?: string;
   author?: string;
+  packageName?: string;
+  versionName?: string;
+  versionCode?: number;
+  enableCloudCache?: boolean;
 }
 
 export interface SiteTheme {

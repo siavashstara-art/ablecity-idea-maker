@@ -6,7 +6,11 @@ export async function generateAndroidGradleProject(manifest: SiteManifest): Prom
   const zip = new JSZip();
   const render = renderStaticSite(manifest);
 
-  const cleanPackageName = 'ir.tavana.forge.app';
+  const cleanPackageName = (manifest.meta.packageName || 'ir.tavana.forge.app')
+    .toLowerCase()
+    .replace(/[^a-z0-9_.]/g, '') || 'ir.tavana.forge.app';
+  const appVersionName = manifest.meta.versionName || '1.0.0';
+  const appVersionCode = manifest.meta.versionCode || 1;
   const appName = manifest.meta.title || 'Tavana App';
 
   // 1. Root settings.gradle.kts
@@ -19,7 +23,7 @@ pluginManagement {
     }
 }
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
         mavenCentral()
@@ -61,8 +65,8 @@ android {
         applicationId = "${cleanPackageName}"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = ${appVersionCode}
+        versionName = "${appVersionName}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -463,9 +467,12 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Accept Android SDK Licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Grant Execute Permission to Gradle Wrapper
         run: |

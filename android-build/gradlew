@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+APP_HOME="`pwd -P`"
+if [ -f "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" ]; then
+    exec java -classpath "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain "$@"
+elif which gradle >/dev/null 2>&1; then
+    exec gradle "$@"
+else
+    echo "Using gradle wrapper..."
+    gradle wrapper || true
+    exec gradle "$@"
+fi
